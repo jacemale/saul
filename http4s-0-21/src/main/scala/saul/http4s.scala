@@ -7,7 +7,7 @@ import fs2.{Chunk, Stream}
 import org.http4s.{Headers, HttpRoutes, Status}
 
 object http4s {
-  def wrap[F[_]: Sync](service: Service[F[org.http4s.Response[F]]]): HttpRoutes[F] =
+  def wrap[F[_]: Sync](service: Request => Option[F[org.http4s.Response[F]]]): HttpRoutes[F] =
     HttpRoutes.apply[F] { req =>
       val method: Option[Method] = req.method match {
         case org.http4s.Method.GET     => Method.Get.some
@@ -29,11 +29,11 @@ object http4s {
       } yield response
     }
 
-  def routes[F[_]: Sync](service: Service[F[Response]]): HttpRoutes[F] =
+  def routes[F[_]: Sync](service: Service[F]): HttpRoutes[F] =
     wrap { req: Request =>
       service(req).map(_.map { res =>
         val headers = Headers(res.headers.map(h => org.http4s.Header(h.name, h.value)))
-        val body = Stream.chunk(Chunk.bytes(res.body.orEmpty.getBytes))
+        val body    = Stream.chunk(Chunk.bytes(res.body.orEmpty.getBytes))
         org.http4s.Response[F](Status(res.status), headers = headers, body = body)
       })
     }

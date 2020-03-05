@@ -2,6 +2,7 @@ package saul
 
 import cats.Functor
 import cats.implicits._
+import saul.Servable.ServePartiallyApplied
 import shapeless._
 import shapeless.ops.function.FnToProduct
 import shapeless.ops.hlist.Prepend
@@ -13,10 +14,13 @@ sealed trait Servable[A] {
 
   def extract(req: Request, remainder: List[String]): Option[ExtractOutput[Out]]
 
-  def serve[FN, R](f: FN)(implicit fnToProduct: FnToProduct.Aux[FN, Out => R]): Request => Option[R] = { req =>
+  def run[FN, R](f: FN)(implicit fnToProduct: FnToProduct.Aux[FN, Out => R]): Request => Option[R] = { req =>
     val path = req.path.stripPrefix("/").split('/').toList
     extract(req, path).map(res => fnToProduct.apply(f)(res.value))
   }
+
+  def serve[F[_], R] =
+    new ServePartiallyApplied[F, A, Out, R](this)
 }
 
 object Servable {
@@ -109,6 +113,13 @@ object Servable {
 
   implicit def servableBody[A](implicit parser: EntityParser[A]): Single[Body[A], A] =
     (req, remainder) => parser.parse(req).map(value => ExtractOutput(value, remainder))
+
+  final class ServePartiallyApplied[F[_], A, O, R](val servable: Servable.Aux[A, O]) extends AnyVal {
+    def apply[FN](fn: FN)(implicit fnToProduct: FnToProduct.Aux[FN, O => F[R]],
+                          encoder: ResponseEncoder[R],
+                          functor: Functor[F]): Service[F] =
+      req => servable.run(fn)(fnToProduct)(req).map(_.map(encoder.encode))
+  }
 }
 
 final case class ExtractOutput[+A](value: A, remainder: List[String])

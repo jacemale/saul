@@ -1,10 +1,25 @@
 lazy val commonSettings = Seq(
-  version := "0.0.1",
+  organization := "com.itv",
+  version := "0.0.2",
   scalaOrganization := "org.typelevel",
   scalaVersion := "2.12.4-bin-typelevel-4",
   scalacOptions ++= Seq(
     "-Yliteral-types"
-  )
+  ),
+  credentials += Credentials(Path.userHome / ".ivy2" / ".hubsvc-credentials"),
+  resolvers += Resolver.url("typesafe", url("https://repo.typesafe.com/typesafe/ivy-releases/"))(
+    Resolver.ivyStylePatterns
+  ),
+  resolvers += "Central Maven Repo" at "https://central.maven.org/maven2/",
+  sources in(Compile, doc) := Seq.empty,
+  publishArtifact in(Compile, packageDoc) := false,
+  publishTo in ThisBuild := {
+    val artifactory = "https://itvrepos.jfrog.io/itvrepos/oasvc-ivy"
+    if (isSnapshot.value)
+      Some("Artifactory Realm" at artifactory)
+    else
+      Some("Artifactory Realm" at artifactory + ";build.timestamp=" + new java.util.Date().getTime)
+  },
 )
 
 lazy val root = project

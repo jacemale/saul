@@ -7,5 +7,5 @@ package object saul {
   final class Or[A, B]
   final class To[R, A]
 
-  type Service[R] = Request => Option[R]
+  type Service[F[_]] = Request => Option[F[Response]]
 }

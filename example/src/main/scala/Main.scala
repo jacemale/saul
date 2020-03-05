@@ -14,14 +14,15 @@ object Main {
 
     val api = Servable[Api]
 
-    val service = api.serve { req: UserRequest =>
+    val service = api.run { req: UserRequest =>
       req match {
         case DeleteProfile(userId)                   => "not ok"
         case GetProfile(userId, includeEntitlements) => "ok"
       }
     }
 
-    val res = service(Request(Method.Get, "/users/1", Map("include-entitlements" -> "true"), Some("body"), List.empty))
+    val res = service(
+      Request(Method.Get, "/users/1", Map("include-entitlements" -> "true"), Some("body"), List.empty))
     println(res)
   }
 }
